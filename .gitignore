@@ -1,0 +1,13 @@
+# IntellijIdea files
+*.iml
+.idea/
+out
+
+# venv
+.venv/
+
+# build
+build/
+
+# test5
+test5/
