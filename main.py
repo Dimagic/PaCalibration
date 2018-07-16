@@ -95,6 +95,7 @@ class Main:
         self.mainMenu()
 
     def checkInstruments(self):
+        # TODO: available instruments
         currInstr = dict(self.config.config.items('instruments'))
         if 'None' in currInstr.values():
             raw_input('Not all the necessary instruments are selected or available. Press enter for continue...')

@@ -31,7 +31,7 @@ class Instrument:
         try:
             menu = int(input("Choose operation: "))
         except Exception:
-            self.mainMenu()
+            self.parent.mainMenu()
         if menu == 1:
             self.menuSetInstrumentType()
         if menu == 0:
@@ -74,7 +74,6 @@ class Instrument:
                 self.config.setConfAttr('instruments', forSelect.get(instrType), dictInstr.get(instrModel))
             self.menu()
 
-
     def fillMenuCurrInstr(self):
         currInstr = dict(self.config.config.items('instruments'))
         listNameRes = self.getListInstrument()
@@ -104,5 +103,11 @@ class Instrument:
                 return instr
         return None
 
+    def multiInit(self):
+        # TODO: multimeter initialisation
+        pass
 
+    def multiGetData(self):
+        # TODO: multimeter get data
+        pass
 
