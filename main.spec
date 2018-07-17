@@ -4,7 +4,7 @@ block_cipher = None
 
 
 a = Analysis(['main.py'],
-             pathex=['D:\\PythonProjects\\PaCalibration'],
+             pathex=['C:\\123\\PaCalibration'],
              binaries=[],
              datas=[],
              hiddenimports=[],

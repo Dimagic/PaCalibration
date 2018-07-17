@@ -7,6 +7,7 @@ class Instrument:
     def __init__(self, mainProg):
         self.parent = mainProg
         self.config = Config(mainProg)
+        self.config.getConfAttr('instruments', 'na')
         try:
             self.rm = visa.ResourceManager()
             self.rm.timeout = 50000

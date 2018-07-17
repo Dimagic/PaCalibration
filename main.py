@@ -3,11 +3,12 @@ import sys
 import os
 from biasCalibrate import BiasCalibrate
 from config import Config
+from loopOne import LoopOne
 from test5 import Test5
 from instrument import Instrument
 import serial.tools.list_ports
 
-__version__ = '0.0.4'
+__version__ = '0.1.0'
 
 
 class Main:
@@ -52,13 +53,19 @@ class Main:
                         self.setComPort()
                     except SyntaxError as e:
                         print(str(e))
-            self.checkInstruments()
+            # TODO: if not all instruments available
+            # self.checkInstruments()
             self.limitsAmpl = {}
             self.getLimits()
+            # ========================
+            LoopOne(self, None)
+            return
+            # ========================
             Wnd_Main = Test5(self)
             Wnd_Main.test5Connection(1)
             Wnd_Node = Wnd_Main.connectAddNode()
-            BiasCalibrate(Wnd_Main.Wnd_NodeEdit)
+            BiasCalibrate(self, Wnd_Main.Wnd_NodeEdit)
+            LoopOne(self, Wnd_Main.Wnd_NodeEdit)
         if menu == 8:
             instr = Instrument(self)
             instr.menu()
@@ -108,11 +115,11 @@ class Main:
         if len(res) != 2:
             raw_input('Incorrect barcode. Press enter for continue...')
             self.mainMenu()
-        if len(res[1]) != 4 or len(re.findall(r'[0-9]', res[1])) != 0:
+        if len(res[1]) != 4:
             raw_input('Incorrect serial number. Press enter for continue...')
             self.mainMenu()
         key = self.config.getConfAttr('limits', 'keys').split(';')
-        val = self.config.getConfAttr('limits', res[0]).split(';')
+        val = self.config.getConfAttr('limits', res[0][:7]).split(';')
         if len(key) != len(val):
             raw_input('Incorrect limits length. Check config file...')
             self.mainMenu()
