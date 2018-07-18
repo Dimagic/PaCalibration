@@ -8,7 +8,7 @@ from test5 import Test5
 from instrument import Instrument
 import serial.tools.list_ports
 
-__version__ = '0.1.0'
+__version__ = '0.1.7'
 
 
 class Main:
@@ -57,14 +57,15 @@ class Main:
             # self.checkInstruments()
             self.limitsAmpl = {}
             self.getLimits()
-            # ========================
-            LoopOne(self, None)
-            return
-            # ========================
+            # # ========================
+            # LoopOne(self, None)
+            # return
+            # # ========================
             Wnd_Main = Test5(self)
             Wnd_Main.test5Connection(1)
-            Wnd_Node = Wnd_Main.connectAddNode()
+            Wnd_Main.connectAddNode()
             BiasCalibrate(self, Wnd_Main.Wnd_NodeEdit)
+            raw_input('Connect network end press enter...')
             LoopOne(self, Wnd_Main.Wnd_NodeEdit)
         if menu == 8:
             instr = Instrument(self)

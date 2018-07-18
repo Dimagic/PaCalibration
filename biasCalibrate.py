@@ -74,9 +74,10 @@ class BiasCalibrate:
             if (delta >= self.parent.limitsAmpl.get('bias') - self.parent.limitsAmpl.get('biaslimits')) \
                     and (delta <= self.parent.limitsAmpl.get('bias') + self.parent.limitsAmpl.get('biaslimits')):
                 break
-            if (delta + 10) > self.parent.limitsAmpl.get('bias'):
-                raw_input('Valie VG{} not found. Press enter for exit...'.format(fase))
-                self.parent.mainMenu()
+            if delta > self.parent.limitsAmpl.get('bias') + 10:
+                raw_input('\nValue VG{} not found. Press enter for restart...'.format(fase))
+                self.calibration(fase)
+
         print
         off.Click()
         set.Click()
