@@ -1,11 +1,11 @@
 import time
+from sys import stdout
 from config import Config
 from instrument import Instrument
 
 
 class LoopOne:
     def __init__(self, mainProg, node):
-        print('NODE: {}'.format(node))
         self.Wnd_Node = node
         self.parent = mainProg
         self.config = Config(mainProg)
@@ -16,9 +16,10 @@ class LoopOne:
         self.setAmplBtn = self.Wnd_Node.Set3
         self.getFase = self.Wnd_Node.Edit4
         self.getAmpl = self.Wnd_Node.Edit3
+        self.minGain = {}
         self.naPreset()
 
-    def naPreset(self): #pa00036/aaaa
+    def naPreset(self):
         span = self.parent.limitsAmpl.get('freqstop') - self.parent.limitsAmpl.get('freqstart')
         center = self.parent.limitsAmpl.get('freqstart') + span/2
         self.na.write(":SYST:PRES")
@@ -28,71 +29,95 @@ class LoopOne:
         self.na.write(":SOUR1:POW:PORT1 -45")
         self.na.write(":CALC1:PAR1:DEF S21")
         self.na.write(":SENS1:SWE:POIN 1601")
-        self.na.write(":CALC1:MARK1 ON")
-        self.na.write(":CALC1:MARK2 ON")
-        self.na.write(":CALC1:MARK3 ON")
-        self.na.write(":CALC1:MARK4 ON")
-        self.na.write(":CALC1:MARK5 ON")
-        self.na.write(":CALC1:MARK1:X {}E6".format(center))
-        self.na.write(":CALC1:MARK2:X {}E6".format(self.parent.limitsAmpl.get('freqstart')))
-        self.na.write(":CALC1:MARK3:X {}E6".format(self.parent.limitsAmpl.get('freqstop')))
-        self.na.write(":CALC1:MARK4:X {}E6".format(center - span/4))
-        self.na.write(":CALC1:MARK5:X {}E6".format(center + span/4))
+        try:
+            peakCount = int(self.config.getConfAttr('settings', 'peakcount'))
+            start = float(self.parent.limitsAmpl.get('freqstart'))
+            for i in xrange(peakCount):
+                i += 1
+                steepFreq = float(span/(peakCount - 1))
+                self.na.write(":CALC1:MARK{} ON".format(i))
+                self.na.write(":CALC1:MARK{}:X {}E6".format(i, start + steepFreq * (i - 1)))
+        except Exception as e:
+            print("Initialisation network error, check config file:")
+            raw_input(str(e))
+            self.parent.mainMenu()
         time.sleep(3)
-        print(self.getGainList())
-        print(self.getAvgGain())
         self.calibration()
 
     def calibration(self):
-        self.setFase(0)
+        steepList = (20, 15, 10, 5, 1)
+        loopStart = self.config.getConfAttr('settings', 'loopstart')
+        self.getFase.set_text(loopStart)
+        self.setFaseBtn.Click()
+        self.getAmpl.set_text(loopStart)
+        self.setAmplBtn.Click()
+        self.minGain.update({'FaseData': self.getFase.texts()[0],
+                             'AmplData': self.getAmpl.texts()[0],
+                             'Gain': self.getAvgGain()})
+        for n in steepList:
+            self.setFase(n)
+            self.setAmplitude(n)
+            if max(self.getGainList()) < float(self.parent.limitsAmpl.get('l1_limit')):
+                status = True
+            else:
+                status = False
+        print('\nAvg gain: {}'.format(self.getAvgGain()))
+        print('Max marker: {}'.format(max(self.getGainList())))
+        if status:
+            raw_input('Loop1 complete. Press enter for continue...')
+        else:
+            raw_input('Loop1 incomplete. Press enter for continue...')
+        self.parent.mainMenu()
 
-    def setFase(self, oldGain):
-        minGain = {'FaseData': self.getFase.texts()[0], 'Gain': self.getAvgGain()}
-        loopCount = 10
-        steep = 20
+    def setFase(self, steep):
+        oldGain = self.minGain.get('Gain')
+        loopCount = 15
         direction = 1
         self.scrollFase.set_focus()
         while True:
+            self.printCurrentMin()
             self.scrollFase.wheel_mouse_input(wheel_dist=steep * direction)
             currGain = self.getAvgGain()
-            minGain = {'FaseData': self.getFase.texts()[0], 'Gain': currGain}
+            self.minGain.update({'FaseData': self.getFase.texts()[0],
+                                 'AmplData': self.getAmpl.texts()[0],
+                                 'Gain': currGain})
             if currGain > oldGain:
                 direction *= -1
-                print(minGain)
                 loopCount -= 1
                 if loopCount == 0:
-                    self.getFase.set_text(minGain.get('FaseData'))
+                    self.getFase.set_text(self.minGain.get('FaseData'))
                     self.setFaseBtn.Click()
-                    self.setAmplitude(minGain.get('Gain'))
+                    return
             oldGain = currGain
             if currGain < -38:
-                break
+                return True
 
-    def setAmplitude(self, oldGain):
-        minGain = {'AmplData': self.getAmpl.texts()[0], 'Gain': self.getAvgGain()}
-        loopCount = 10
-        steep = 20
+    def setAmplitude(self, steep):
+        oldGain = self.minGain.get('Gain')
+        loopCount = 15
         direction = 1
         self.scrollAmpl.set_focus()
         while True:
+            self.printCurrentMin()
             self.scrollAmpl.wheel_mouse_input(wheel_dist=steep * direction)
             currGain = self.getAvgGain()
-            minGain = {'AmplData': self.getAmpl.texts()[0], 'Gain': currGain}
+            self.minGain.update({'FaseData': self.getFase.texts()[0],
+                                 'AmplData': self.getAmpl.texts()[0],
+                                 'Gain': currGain})
             if currGain > oldGain:
                 direction *= -1
-                print(minGain)
                 loopCount -= 1
                 if loopCount == 0:
-                    raw_input('wwwwwwwwwwww')
-                    break
+                    self.getAmpl.set_text(self.minGain.get('AmplData'))
+                    self.setAmplBtn.Click()
+                    return
             oldGain = currGain
             if currGain < -38:
-                raw_input('done')
-                break
+                return True
 
     def getGainList(self):
         gainList = []
-        for i in xrange(1, 6):
+        for i in xrange(1, int(self.config.getConfAttr('settings', 'peakcount')) + 1):
             gain = self.na.query(":CALC1:MARK{}:Y?".format(i)).split(',')[0]
             gainList.append(round(float(gain), 2))
         return gainList
@@ -100,3 +125,8 @@ class LoopOne:
     def getAvgGain(self):
         gainList = self.getGainList()
         return round(sum(gainList)/len(gainList), 2)
+
+    def printCurrentMin(self):
+        stdout.write('\rCurrent minimum - Fase: {} Ampl: {} Avg gain: {}'.format(self.minGain.get('FaseData'),
+                                                                                 self.minGain.get('AmplData'),
+                                                                                 self.minGain.get('Gain')))

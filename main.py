@@ -8,7 +8,7 @@ from test5 import Test5
 from instrument import Instrument
 import serial.tools.list_ports
 
-__version__ = '0.1.7'
+__version__ = '0.2.0'
 
 
 class Main:
@@ -23,7 +23,10 @@ class Main:
         print("********************************")
         print("******** PA Calibration ********")
         print("********************************")
-        print("1: Calibrate")
+        print("1: Calibrate all")
+        print("2: BIAS")
+        print("3: LOOP1")
+        print("4: LOOP2")
         print("8: Set instruments")
         print("9: Set COM port")
         print("0: Exit")
@@ -35,7 +38,7 @@ class Main:
             menu = int(input("Choose operation: "))
         except Exception:
             self.mainMenu()
-        if menu == 1:
+        if menu in (1, 2, 3, 4):
             if self.config.getConfAttr('settings', 'comPort') == "None":
                 try:
                     raw_input("Port not selected. Press enter for choose...")
@@ -57,16 +60,16 @@ class Main:
             # self.checkInstruments()
             self.limitsAmpl = {}
             self.getLimits()
-            # # ========================
-            # LoopOne(self, None)
-            # return
-            # # ========================
             Wnd_Main = Test5(self)
             Wnd_Main.test5Connection(1)
             Wnd_Main.connectAddNode()
-            BiasCalibrate(self, Wnd_Main.Wnd_NodeEdit)
-            raw_input('Connect network end press enter...')
-            LoopOne(self, Wnd_Main.Wnd_NodeEdit)
+            if menu in (1, 2):
+                BiasCalibrate(self, Wnd_Main.Wnd_NodeEdit)
+            if menu in (1, 3):
+                raw_input('Connect network end press enter...')
+                LoopOne(self, Wnd_Main.Wnd_NodeEdit)
+            if menu in (1, 4):
+                pass
         if menu == 8:
             instr = Instrument(self)
             instr.menu()

@@ -1,7 +1,4 @@
 from sys import stdout
-
-import pywinauto
-
 from config import Config
 from instrument import Instrument
 
@@ -50,7 +47,7 @@ class BiasCalibrate:
             raw_input(str(e))
         start = self.getCurrent(multi)
         off.Click()
-        vgEdit.set_text('300')
+        vgEdit.set_text(self.config.getConfAttr('settings', 'vgstart'))
         set.Click()
         if (self.getCurrent(multi) - start) <= self.parent.limitsAmpl.get('bias'):
             direction = False
@@ -71,8 +68,10 @@ class BiasCalibrate:
             delta = round(self.getCurrent(multi) - start, 2)
             stdout.write('\rBIAS VG{}: {}'.format(fase, delta))
             stdout.flush()
-            if (delta >= self.parent.limitsAmpl.get('bias') - self.parent.limitsAmpl.get('biaslimits')) \
-                    and (delta <= self.parent.limitsAmpl.get('bias') + self.parent.limitsAmpl.get('biaslimits')):
+            if ((delta >= self.parent.limitsAmpl.get('bias') - self.parent.limitsAmpl.get('biaslimits')) \
+                    and (delta <= self.parent.limitsAmpl.get('bias') + self.parent.limitsAmpl.get('biaslimits'))):
+                break
+            if vgEdit.texts()[0] > self.config.getConfAttr('settings', 'vglimit'):
                 break
             if delta > self.parent.limitsAmpl.get('bias') + 10:
                 raw_input('\nValue VG{} not found. Press enter for restart...'.format(fase))
