@@ -1,19 +1,22 @@
 import re
 import sys
 import os
+from sys import stdout
 from biasCalibrate import BiasCalibrate
 from config import Config
 from loopOne import LoopOne
+from loopTwo import LoopTwo
 from test5 import Test5
 from instrument import Instrument
 import serial.tools.list_ports
 
-__version__ = '0.2.0'
+__version__ = '0.2.8'
 
 
 class Main:
     def __init__(self):
         self.config = Config(self)
+        self.getOffsetData()
         self.limitsAmpl = {}
         self.mainMenu()
 
@@ -69,7 +72,9 @@ class Main:
                 raw_input('Connect network end press enter...')
                 LoopOne(self, Wnd_Main.Wnd_NodeEdit)
             if menu in (1, 4):
-                pass
+                raw_input('Connect SW1, SW2 end press enter...')
+                LoopTwo(self, Wnd_Main.Wnd_NodeEdit)
+                # LoopTwo(self, None)
         if menu == 8:
             instr = Instrument(self)
             instr.menu()
@@ -134,6 +139,20 @@ class Main:
                 print(str(e))
                 raw_input('Incorrect limits data. Check config file...')
                 self.mainMenu()
+
+    def getOffsetData(self):
+        try:
+            offList = []
+            f = open(self.config.getConfAttr('settings', 'calibrationFile'), "r")
+            for line in f:
+                off = line.strip().split(';')
+                off[0] = float(off[0])/1000000
+                print(off)
+
+        except Exception as e:
+            print(str(e))
+            raw_input('Calibration data file open error. Press enter for continue...')
+
 
 
 if __name__ == '__main__':

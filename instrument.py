@@ -1,13 +1,14 @@
 import os
 import visa
 from config import Config
+from prettytable import PrettyTable
 
 
 class Instrument:
     def __init__(self, mainProg):
         self.parent = mainProg
         self.config = Config(mainProg)
-        self.config.getConfAttr('instruments', 'na')
+        # self.config.getConfAttr('instruments', 'na')
         try:
             self.rm = visa.ResourceManager()
             self.rm.timeout = 50000
@@ -23,9 +24,6 @@ class Instrument:
         print("Current instruments:")
         print("********************************")
         self.fillMenuCurrInstr()
-        print("********************************")
-        print("Available instruments:")
-        print("********************************")
         print("1: Set instrument")
         print("0: Back")
 
@@ -50,14 +48,15 @@ class Instrument:
             print('{}: {}'.format(i, j))
         try:
             instrType = int(raw_input('Choose instrument type: '))
-        except Exception:
+        except Exception as e:
+            raw_input(str(e))
             self.menuSetInstrumentType()
         if instrType not in forSelect.keys():
             self.menuSetInstrumentType()
         else:
             listInstr = self.rm.list_resources()
             if len(listInstr) == 0:
-                print('Available instruments not found. Press enter for return to main menu...')
+                raw_input('Available instruments not found. Press enter for return to main menu...')
                 self.parent.mainMenu()
             dictInstr = {}
             for i, j in enumerate(listInstr):
@@ -70,7 +69,7 @@ class Instrument:
             except Exception:
                 self.menuSetInstrumentType()
             if instrModel == 10:
-                self.config.setConfAttr('instruments', forSelect.get(instrType), 'None')
+                self.config.setConfAttr('instruments', forSelect.get(instrType), '')
             else:
                 self.config.setConfAttr('instruments', forSelect.get(instrType), dictInstr.get(instrModel))
             self.menu()
@@ -78,29 +77,33 @@ class Instrument:
     def fillMenuCurrInstr(self):
         currInstr = dict(self.config.config.items('instruments'))
         listNameRes = self.getListInstrument()
+        tableInstr = PrettyTable(["Type", "Model", "Availability"])
         for i in currInstr.keys():
-            if currInstr.get(i).decode('utf-8') == 'None':
-                print('{} : {}'.format(i.decode('utf-8').upper(), currInstr.get(i).decode('utf-8')))
+            if currInstr.get(i).decode('utf-8') in ('None', ''):
+                # print('{} : {}'.format(i.decode('utf-8').upper(), currInstr.get(i).decode('utf-8')))
+                tableInstr.add_row([i.decode('utf-8').upper(), currInstr.get(i).decode('utf-8'), ''])
                 continue
             if currInstr.get(i).decode('utf-8') in listNameRes:
                 status = 'Availabe'
             else:
                 status = 'Not availabe'
-            print('{} : {} : {}'.format(i.decode('utf-8').upper(), currInstr.get(i).decode('utf-8'), status))
+            tableInstr.add_row([i.decode('utf-8').upper(), currInstr.get(i).decode('utf-8'), status])
+        print(tableInstr)
 
     def getListInstrument(self):
         listRes = self.rm.list_resources()
         listNameRes = []
         for i in listRes:
             instr = self.rm.open_resource(i, send_end=False)
-            listNameRes.append(instr.query('*IDN?').split(',')[1])
+            listNameRes.append(instr.query('*IDN?').split(',')[1].replace(' ', ''))
         return listNameRes
 
     def getInstr(self, val):
         listRes = self.rm.list_resources()
         for i in listRes:
             instr = self.rm.open_resource(i, send_end=False)
-            if val.upper() == instr.query('*IDN?').split(',')[1].upper():
+            currInstr = instr.query('*IDN?').split(',')[1].upper().replace(' ', '')
+            if val.upper() == currInstr.upper():
                 return instr
         return None
 

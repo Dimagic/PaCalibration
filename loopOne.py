@@ -2,6 +2,8 @@ import time
 from sys import stdout
 from config import Config
 from instrument import Instrument
+from progressbar import ProgressBar
+from colorama import Fore
 
 
 class LoopOne:
@@ -26,9 +28,10 @@ class LoopOne:
         self.na.write(":SENS1:FREQ:CENT {}E6".format(center))
         self.na.write(":SENS1:FREQ:SPAN {}E6".format(span))
         self.na.write(":SOUR1:POW:ATT 40")
-        self.na.write(":SOUR1:POW:PORT1 -45")
+        self.na.write(":SOUR1:POW:PORT1 -25")
         self.na.write(":CALC1:PAR1:DEF S21")
-        self.na.write(":SENS1:SWE:POIN 1601")
+        self.na.write(":SENS1:SWE:POIN 1001")
+        self.na.write(":DISP:WIND1:TRAC1:Y:RLEV -30")
         try:
             peakCount = int(self.config.getConfAttr('settings', 'peakcount'))
             start = float(self.parent.limitsAmpl.get('freqstart'))
@@ -55,6 +58,7 @@ class LoopOne:
                              'AmplData': self.getAmpl.texts()[0],
                              'Gain': self.getAvgGain()})
         for n in steepList:
+            time.sleep(.5)
             self.setFase(n)
             self.setAmplitude(n)
             if max(self.getGainList()) < float(self.parent.limitsAmpl.get('l1_limit')):
@@ -64,14 +68,14 @@ class LoopOne:
         print('\nAvg gain: {}'.format(self.getAvgGain()))
         print('Max marker: {}'.format(max(self.getGainList())))
         if status:
-            raw_input('Loop1 complete. Press enter for continue...')
+            print('Loop1 complete')
         else:
-            raw_input('Loop1 incomplete. Press enter for continue...')
-        self.parent.mainMenu()
+            print('Loop1 incomplete')
+        raw_input('Press enter for continue...')
 
     def setFase(self, steep):
         oldGain = self.minGain.get('Gain')
-        loopCount = 15
+        loopCount = 7
         direction = 1
         self.scrollFase.set_focus()
         while True:
@@ -89,12 +93,12 @@ class LoopOne:
                     self.setFaseBtn.Click()
                     return
             oldGain = currGain
-            if currGain < -38:
-                return True
+            # if currGain < -38:
+            #     return True
 
     def setAmplitude(self, steep):
         oldGain = self.minGain.get('Gain')
-        loopCount = 15
+        loopCount = 7
         direction = 1
         self.scrollAmpl.set_focus()
         while True:
@@ -112,8 +116,8 @@ class LoopOne:
                     self.setAmplBtn.Click()
                     return
             oldGain = currGain
-            if currGain < -38:
-                return True
+            # if currGain < -38:
+            #     return True
 
     def getGainList(self):
         gainList = []

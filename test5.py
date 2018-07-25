@@ -76,7 +76,7 @@ class Test5:
             Wnd_Node.SetFocus()
             Wnd_Node.TypeKeys("{RIGHT}")
             Wnd_Node[u'PnP'].Click()
-            time.sleep(1)
+            time.sleep(2)
             listBox = ListBoxWrapper(Wnd_Node.ListBox.WrapperObject())
             # print('ListBox = {}'.format(listBox.ItemCount()))
             if listBox.ItemCount() == 0:

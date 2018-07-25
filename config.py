@@ -6,6 +6,7 @@ class Config:
         self.parent = parent
         self.config = configparser.ConfigParser()
         self.configFile = './config.ini'
+        self.config.read(self.configFile, encoding='utf-8-sig')
 
     def getConfAttr(self, blockName, attrName):
         try:
