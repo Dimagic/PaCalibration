@@ -1,8 +1,8 @@
 import re
 import sys
 import os
-from sys import stdout
 from biasCalibrate import BiasCalibrate
+from checkResult import FullBandResult
 from config import Config
 from loopOne import LoopOne
 from loopTwo import LoopTwo
@@ -10,13 +10,13 @@ from test5 import Test5
 from instrument import Instrument
 import serial.tools.list_ports
 
-__version__ = '0.2.8'
+__version__ = '0.3.3'
 
 
 class Main:
     def __init__(self):
-        self.config = Config(self)
-        self.getOffsetData()
+        self.config = Config(mainProg=self)
+        self.instrument = Instrument(mainProg=self)
         self.limitsAmpl = {}
         self.mainMenu()
 
@@ -30,6 +30,7 @@ class Main:
         print("2: BIAS")
         print("3: LOOP1")
         print("4: LOOP2")
+        print("5: Check full band")
         print("8: Set instruments")
         print("9: Set COM port")
         print("0: Exit")
@@ -41,7 +42,7 @@ class Main:
             menu = int(input("Choose operation: "))
         except Exception:
             self.mainMenu()
-        if menu in (1, 2, 3, 4):
+        if menu in (1, 2, 3, 4, 5):
             if self.config.getConfAttr('settings', 'comPort') == "None":
                 try:
                     raw_input("Port not selected. Press enter for choose...")
@@ -63,20 +64,21 @@ class Main:
             # self.checkInstruments()
             self.limitsAmpl = {}
             self.getLimits()
-            Wnd_Main = Test5(self)
-            Wnd_Main.test5Connection(1)
-            Wnd_Main.connectAddNode()
+
+            if menu in (1, 2, 3, 4):
+                Wnd_Main = self.getNode()
             if menu in (1, 2):
-                BiasCalibrate(self, Wnd_Main.Wnd_NodeEdit)
+                BiasCalibrate(mainProg=self, node=Wnd_Main.Wnd_NodeEdit)
             if menu in (1, 3):
                 raw_input('Connect network end press enter...')
-                LoopOne(self, Wnd_Main.Wnd_NodeEdit)
+                LoopOne(mainProg=self, node=Wnd_Main.Wnd_NodeEdit)
             if menu in (1, 4):
                 raw_input('Connect SW1, SW2 end press enter...')
-                LoopTwo(self, Wnd_Main.Wnd_NodeEdit)
-                # LoopTwo(self, None)
+                LoopTwo(mainProg=self, node=Wnd_Main.Wnd_NodeEdit)
+            if menu in (1, 5):
+                FullBandResult(mainProg=self)
         if menu == 8:
-            instr = Instrument(self)
+            instr = Instrument(mainProg=self)
             instr.menu()
             instr.getListInstrument()
         if menu == 9:
@@ -85,6 +87,12 @@ class Main:
             sys.exit(0)
         else:
             self.mainMenu()
+
+    def getNode(self):
+        Wnd_Main = Test5(mainProg=self)
+        Wnd_Main.test5Connection(1)
+        Wnd_Main.connectAddNode()
+        return Wnd_Main
 
     def setComPort(self):
         listPorts = list(serial.tools.list_ports.comports())
@@ -139,20 +147,6 @@ class Main:
                 print(str(e))
                 raw_input('Incorrect limits data. Check config file...')
                 self.mainMenu()
-
-    def getOffsetData(self):
-        try:
-            offList = []
-            f = open(self.config.getConfAttr('settings', 'calibrationFile'), "r")
-            for line in f:
-                off = line.strip().split(';')
-                off[0] = float(off[0])/1000000
-                print(off)
-
-        except Exception as e:
-            print(str(e))
-            raw_input('Calibration data file open error. Press enter for continue...')
-
 
 
 if __name__ == '__main__':

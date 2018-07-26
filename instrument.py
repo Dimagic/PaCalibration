@@ -8,7 +8,9 @@ class Instrument:
     def __init__(self, mainProg):
         self.parent = mainProg
         self.config = Config(mainProg)
-        # self.config.getConfAttr('instruments', 'na')
+        self.sa = None
+        self.gen1 = None
+        self.gen2 = None
         try:
             self.rm = visa.ResourceManager()
             self.rm.timeout = 50000
@@ -107,11 +109,27 @@ class Instrument:
                 return instr
         return None
 
-    def multiInit(self):
-        # TODO: multimeter initialisation
-        pass
+    def saPreset(self, freq, line):
+        self.sa = self.getInstr(self.config.getConfAttr('instruments', 'sa'))
+        self.sa.write(":SYST:PRES")
+        self.sa.write(":CAL:AUTO OFF")
+        self.sa.write(":SENSE:FREQ:center {} MHz".format(freq))
+        self.sa.write(":SENSE:FREQ:span {} MHz".format(3.5))
+        self.sa.write("DISP:WIND:TRAC:Y:DLIN {} dBm".format(line))
+        self.sa.write("DISP:WIND:TRAC:Y:DLIN:STAT 1")
+        self.sa.write("BAND:VID 27 KHZ")
+        return self.sa
 
-    def multiGetData(self):
-        # TODO: multimeter get data
-        pass
+    def genPreset(self, freq):
+        self.gen1 = self.getInstr(self.config.getConfAttr('instruments', 'gen1'))
+        self.gen2 = self.getInstr(self.config.getConfAttr('instruments', 'gen2'))
+        self.gen1.write("*RST")
+        self.gen1.write(":OUTP:STAT OFF")
+        self.gen1.write(":OUTP:MOD:STAT OFF")
+        self.gen2.write("*RST")
+        self.gen2.write(":OUTP:STAT OFF")
+        self.gen2.write(":OUTP:MOD:STAT OFF")
 
+        self.gen1.write(":FREQ:FIX {} MHz".format(freq - 0.3))
+        self.gen2.write(":FREQ:FIX {} MHz".format(freq + 0.3))
+        return self.gen1, self.gen2

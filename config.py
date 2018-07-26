@@ -2,8 +2,8 @@ import configparser
 
 
 class Config:
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, mainProg):
+        self.parent = mainProg
         self.config = configparser.ConfigParser()
         self.configFile = './config.ini'
         self.config.read(self.configFile, encoding='utf-8-sig')

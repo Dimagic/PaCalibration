@@ -1,7 +1,7 @@
 import time
-from sys import stdout
 from config import Config
 from instrument import Instrument
+from progressbar import ProgressBar
 
 
 class LoopTwo:
@@ -22,6 +22,9 @@ class LoopTwo:
         self.span = self.parent.limitsAmpl.get('freqstop') - self.parent.limitsAmpl.get('freqstart')
         self.center = self.parent.limitsAmpl.get('freqstart') + self.span / 2
 
+        self.harmonyLimit = -30
+        self.needSaGain = 30
+
         self.cw = Instrument(mainProg).getInstr(self.config.getConfAttr('instruments', 'cw'))
         self.sa = Instrument(mainProg).getInstr(self.config.getConfAttr('instruments', 'sa'))
         self.gen1 = Instrument(mainProg).getInstr(self.config.getConfAttr('instruments', 'gen1'))
@@ -34,11 +37,12 @@ class LoopTwo:
         self.calibration()
 
     def saPreset(self):
-        print(self.sa)
         self.sa.write(":SYST:PRES")
         self.sa.write(":CAL:AUTO OFF")
         self.sa.write(":SENSE:FREQ:center {} MHz".format(self.center))
         self.sa.write(":SENSE:FREQ:span {} MHz".format(3.5))
+        self.sa.write("DISP:WIND:TRAC:Y:DLIN {} dBm".format(self.harmonyLimit))
+        self.sa.write("DISP:WIND:TRAC:Y:DLIN:STAT 1")
         self.sa.write("BAND:VID 27 KHZ")
 
     def genPreset(self):
@@ -55,26 +59,102 @@ class LoopTwo:
     def cwPreset(self):
         pass
 
-    def calibration(self):
-        self.setGenPow(30)
-        self.markFreqList = (self.center - .9,
-                             self.center - 1.5,
-                             self.center + .9,
-                             self.center + 1.5)
+    def setMinimum(self):
+        self.getFase.set_text(self.minGain.get('FaseData'))
+        self.setFaseBtn.Click()
+        self.getAmpl.set_text(self.minGain.get('AmplData'))
+        self.setAmplBtn.Click()
+
+    def getFirstMinimun(self):
+        self.minGain.update({'FaseData': 0, 'AmplData': 0, 'Gain': 1024})
+        self.setGenPow(self.needSaGain)
+        self.markFreqList = (self.center - .9, self.center + .9)
         for i, freq in enumerate(self.markFreqList):
             i += 1
             self.sa.write(":CALC:MARK{}:STAT ON".format(i))
             self.sa.write(":CALC:MARK{}:X {} MHz".format(i, freq))
+        absMin = 0
+        absMax =1024
+        rSteep = 128
+        fBeg = absMin
+        fEnd = absMax
+        aBeg = absMin
+        aEnd = absMax
+        pb = 0
+        pbar = ProgressBar(maxval=160)
+        pbar.start()
+        while True:
+            rLoopFase = xrange(fBeg, fEnd + rSteep, rSteep)
+            rLoopAmpl = xrange(aBeg, aEnd + rSteep, rSteep)
+            for i in rLoopFase:
+                for j in rLoopAmpl:
+                    pb += 1
+                    pbar.update(pb)
+                    self.getFase.set_text(i)
+                    self.setFaseBtn.Click()
+                    self.getAmpl.set_text(j)
+                    self.setAmplBtn.Click()
+                    if self.getAvgGain() < self.minGain.get('Gain'):
+                        currGain = self.getAvgGain()
+                        self.minGain.update({'FaseData': int(self.getFase.texts()[0]),
+                                             'AmplData': int(self.getAmpl.texts()[0]),
+                                             'Gain': currGain})
+            self.setMinimum()
+            rSteep = rSteep / 2
+            if rSteep < 1:
+                pbar.finish()
+                time.sleep(.5)
+                return
+            fBeg = self.minGain.get('FaseData') - rSteep
+            fEnd = self.minGain.get('FaseData') + rSteep
+
+            aBeg = self.minGain.get('AmplData') - rSteep
+            aEnd = self.minGain.get('AmplData') + rSteep
+            if fBeg < absMin:
+                fBeg = absMin
+            if fEnd > absMax:
+                fEnd = absMax
+            if aBeg < absMin:
+                aBeg = absMin
+            if aEnd > absMax:
+                aEnd = absMax
+
+    def setMarkers(self, freq):
+        self.markFreqList = (freq - .9, freq + .9)
+        for i, freq in enumerate(self.markFreqList):
+            i += 1
+            self.sa.write(":CALC:MARK{}:STAT ON".format(i))
+            self.sa.write(":CALC:MARK{}:X {} MHz".format(i, self.markFreqList[i - 1]))
+
+    def checkResult(self):
+        freq = self.parent.limitsAmpl.get('freqstart') + 1
+        while freq <= self.parent.limitsAmpl.get('freqstop') - 1:
+            self.setMarkers(freq - 1)
+            self.sa.write(":SENSE:FREQ:center {} MHz".format(freq))
+            self.gen1.write(":FREQ:FIX {} MHz".format(freq - 0.3))
+            self.gen2.write(":FREQ:FIX {} MHz".format(freq + 0.3))
+            time.sleep(.5)
+            print("Freq: {} Avg Gain: {}".format(freq, self.getAvgGain()))
+            freq += 1
+
+    def calibration(self):
+        self.getFirstMinimun()
+        return
+
         steepList = (40, 20, 15, 10, 5, 1)
         loopStart = self.config.getConfAttr('settings', 'loopstart')
         self.getFase.set_text(loopStart)
         self.setFaseBtn.Click()
         self.getAmpl.set_text(loopStart)
         self.setAmplBtn.Click()
+        time.sleep(1)
         self.minGain.update({'FaseData': self.getFase.texts()[0],
                              'AmplData': self.getAmpl.texts()[0],
                              'Gain': self.getAvgGain()})
-        for n in steepList:
+        self.pbar = ProgressBar(maxval=len(steepList) * 49)
+        self.pb = 0
+        self.pbar.start()
+        for p, n in enumerate(steepList):
             time.sleep(.5)
             self.setFase(n)
             self.setAmplitude(n)
@@ -82,6 +162,7 @@ class LoopTwo:
                 status = True
             else:
                 status = False
+        self.pbar.finish()
         print('\nAvg gain: {}'.format(self.getAvgGain()))
         print('Max marker: {}'.format(max(self.getGainList())))
         if status:
@@ -94,7 +175,7 @@ class LoopTwo:
         raw_input('Press enter for continue...')
 
     def setFase(self, steep):
-        oldGain = self.minGain.get('Gain')
+        oldGain = self.getAvgGain()
         loopCount = 7
         direction = 1
         self.scrollFase.set_focus()
@@ -102,9 +183,10 @@ class LoopTwo:
             self.printCurrentMin()
             self.scrollFase.wheel_mouse_input(wheel_dist=steep * direction)
             currGain = self.getAvgGain()
-            self.minGain.update({'FaseData': self.getFase.texts()[0],
-                                 'AmplData': self.getAmpl.texts()[0],
-                                 'Gain': currGain})
+            if currGain < self.minGain.get('Gain'):
+                self.minGain.update({'FaseData': self.getFase.texts()[0],
+                                     'AmplData': self.getAmpl.texts()[0],
+                                     'Gain': currGain})
             if currGain > oldGain:
                 direction *= -1
                 loopCount -= 1
@@ -115,7 +197,7 @@ class LoopTwo:
             oldGain = currGain
 
     def setAmplitude(self, steep):
-        oldGain = self.minGain.get('Gain')
+        oldGain = self.getAvgGain()
         loopCount = 7
         direction = 1
         self.scrollAmpl.set_focus()
@@ -123,9 +205,10 @@ class LoopTwo:
             self.printCurrentMin()
             self.scrollAmpl.wheel_mouse_input(wheel_dist=steep * direction)
             currGain = self.getAvgGain()
-            self.minGain.update({'FaseData': self.getFase.texts()[0],
-                                 'AmplData': self.getAmpl.texts()[0],
-                                 'Gain': currGain})
+            if currGain < self.minGain.get('Gain'):
+                self.minGain.update({'FaseData': self.getFase.texts()[0],
+                                     'AmplData': self.getAmpl.texts()[0],
+                                     'Gain': currGain})
             if currGain > oldGain:
                 direction *= -1
                 loopCount -= 1
@@ -147,7 +230,7 @@ class LoopTwo:
         return round(sum(gainList)/len(gainList), 2)
 
     def setGenPow(self, need):
-        self.sa.write("DISP:WIND:TRAC:Y:RLEV:OFFS 40")
+        self.sa.write("DISP:WIND:TRAC:Y:RLEV:OFFS {}".format(self.getOffset()))
         genList = (self.gen1, self.gen2)
         for curGen, freq in enumerate([self.center - 0.3, self.center + 0.3]):
             self.sa.write(":CALC:MARK1:STAT ON")
@@ -186,7 +269,26 @@ class LoopTwo:
             else:
                 genPow -= steep
 
+    def getOffset(self):
+        try:
+            offList = []
+            f = open(self.config.getConfAttr('settings', 'calibrationFile'), "r")
+            for line in f:
+                off = line.strip().split(';')
+                off[0] = float(off[0])/1000000
+                offList.append(off)
+            for n in offList:
+                if n[0] <= self.center < n[0] + 70:
+                    return n[1]
+        except Exception as e:
+            print(str(e))
+            raw_input('Calibration data file open error. Press enter for continue...')
+
     def printCurrentMin(self):
-        stdout.write('\rCurrent minimum - Fase: {} Ampl: {} Avg gain: {}'.format(self.minGain.get('FaseData'),
-                                                                                 self.minGain.get('AmplData'),
-                                                                                 self.minGain.get('Gain')))
+        # stdout.write('\rCurrent minimum - Fase: {} Ampl: {} Avg gain: {}'.format(self.minGain.get('FaseData'),
+        #                                                                          self.minGain.get('AmplData'),
+        #                                                                          self.minGain.get('Gain')))
+        # stdout.flush()
+        self.pb += 1
+        self.pbar.update(self.pb)
+
