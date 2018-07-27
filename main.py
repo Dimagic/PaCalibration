@@ -10,13 +10,13 @@ from test5 import Test5
 from instrument import Instrument
 import serial.tools.list_ports
 
-__version__ = '0.3.3'
+__version__ = '0.3.5'
 
 
 class Main:
     def __init__(self):
         self.config = Config(mainProg=self)
-        self.instrument = Instrument(mainProg=self)
+        self.instrument = None
         self.limitsAmpl = {}
         self.mainMenu()
 
@@ -147,6 +147,7 @@ class Main:
                 print(str(e))
                 raw_input('Incorrect limits data. Check config file...')
                 self.mainMenu()
+        self.instrument = Instrument(mainProg=self)
 
 
 if __name__ == '__main__':

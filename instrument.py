@@ -1,5 +1,6 @@
 import os
 import visa
+import time
 from config import Config
 from prettytable import PrettyTable
 
@@ -8,6 +9,10 @@ class Instrument:
     def __init__(self, mainProg):
         self.parent = mainProg
         self.config = Config(mainProg)
+
+        self.span = self.parent.limitsAmpl.get('freqstop') - self.parent.limitsAmpl.get('freqstart')
+        self.center = self.parent.limitsAmpl.get('freqstart') + self.span / 2
+
         self.sa = None
         self.gen1 = None
         self.gen2 = None
@@ -18,7 +23,6 @@ class Instrument:
             print('Error: {}'.format(str(e)))
             raw_input('Press enter for return continue...')
             mainProg.mainMenu()
-        # self.menu()
 
     def menu(self):
         os.system("cls")
@@ -133,3 +137,60 @@ class Instrument:
         self.gen1.write(":FREQ:FIX {} MHz".format(freq - 0.3))
         self.gen2.write(":FREQ:FIX {} MHz".format(freq + 0.3))
         return self.gen1, self.gen2
+
+    def setGenPow(self, need):
+        self.sa.write("DISP:WIND:TRAC:Y:RLEV:OFFS {}".format(self.getOffset()))
+        genList = (self.gen1, self.gen2)
+        for curGen, freq in enumerate([self.center - 0.3, self.center + 0.3]):
+            self.sa.write(":CALC:MARK1:STAT ON")
+            self.sa.write(":CALC:MARK1:X {} MHz".format(freq))
+            gen = genList[curGen]
+            gen.write(":FREQ:FIX {} MHz".format(freq))
+            gen.write("POW:AMPL -20 dBm")
+            gen.write(":OUTP:STAT ON")
+            time.sleep(1)
+            self.setGainTo(gen=gen, need=need)
+            gen.write(":OUTP:STAT OFF")
+        self.gen1.write(":OUTP:STAT ON")
+        self.gen2.write(":OUTP:STAT ON")
+        time.sleep(1)
+
+    def setGainTo(self, gen, need):
+        gain = float(self.sa.query("CALC:MARK1:Y?"))
+        genPow = float(gen.query("POW:AMPL?"))
+        acc = 0.03
+        while not (gain - acc <= need <= gain + acc):
+            if genPow >= 0:
+                gen.write(":OUTP:STAT OFF")
+                raw_input("Gain problem. Press enter for continue...")
+                self.parent.mainMenu()
+            gen.write("POW:AMPL {} dBm".format(genPow))
+            gain = float(self.sa.query("CALC:MARK1:Y?"))
+            time.sleep(.1)
+            delta = need - gain
+            if delta <= 0.5:
+                steep = 0.01
+            elif delta <= 2:
+                steep = 0.5
+            else:
+                steep = 1
+            if gain < need:
+                genPow += steep
+            else:
+                genPow -= steep
+
+    def getOffset(self):
+        try:
+            offList = []
+            f = open(self.config.getConfAttr('settings', 'calibrationFile'), "r")
+            for line in f:
+                off = line.strip().split(';')
+                off[0] = float(off[0])/1000000
+                offList.append(off)
+            for n in offList:
+                if n[0] <= self.center < n[0] + 70:
+                    return n[1]
+        except Exception as e:
+            print(str(e))
+            raw_input('Calibration data file open error. Press enter for continue...')
+            self.parent.mainMenu()
