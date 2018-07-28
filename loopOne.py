@@ -3,7 +3,6 @@ from sys import stdout
 from config import Config
 from instrument import Instrument
 from progressbar import ProgressBar
-from colorama import Fore
 
 
 class LoopOne:

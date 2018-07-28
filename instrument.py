@@ -139,6 +139,7 @@ class Instrument:
         return self.gen1, self.gen2
 
     def setGenPow(self, need):
+        self.sa.write(":SENSE:FREQ:center {} MHz".format(self.center))
         self.sa.write("DISP:WIND:TRAC:Y:RLEV:OFFS {}".format(self.getOffset()))
         genList = (self.gen1, self.gen2)
         for curGen, freq in enumerate([self.center - 0.3, self.center + 0.3]):
@@ -161,13 +162,14 @@ class Instrument:
         acc = 0.03
         while not (gain - acc <= need <= gain + acc):
             if genPow >= 0:
-                gen.write(":OUTP:STAT OFF")
+                self.gen1.write(":OUTP:STAT OFF")
+                self.gen2.write(":OUTP:STAT OFF")
                 raw_input("Gain problem. Press enter for continue...")
                 self.parent.mainMenu()
             gen.write("POW:AMPL {} dBm".format(genPow))
             gain = float(self.sa.query("CALC:MARK1:Y?"))
             time.sleep(.1)
-            delta = need - gain
+            delta = abs(need - gain)
             if delta <= 0.5:
                 steep = 0.01
             elif delta <= 2:

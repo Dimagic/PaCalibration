@@ -1,10 +1,8 @@
 import os
 import time
-from sys import stdout
 from progressbar import ProgressBar
 from config import Config
 from prettytable import PrettyTable
-
 from loopTwo import LoopTwo
 
 
@@ -16,8 +14,8 @@ class FullBandResult:
 
         self.span = self.parent.limitsAmpl.get('freqstop') - self.parent.limitsAmpl.get('freqstart')
         self.center = self.parent.limitsAmpl.get('freqstart') + self.span / 2
-
-        self.harmonyLimit = -30
+        self.harmonyLimit = self.parent.limitsAmpl.get('l2_limit')
+        self.needSaGain = self.parent.limitsAmpl.get('needGain')
 
         self.sa = self.instrument.saPreset(freq=self.center, line=self.harmonyLimit)
         self.gen1, self.gen2 = self.instrument.genPreset(freq=self.center)
@@ -28,7 +26,7 @@ class FullBandResult:
         nn = 0
         freqDict = {}
         freq = self.parent.limitsAmpl.get('freqstart') + 1
-        self.instrument.setGenPow(need=30)
+        self.instrument.setGenPow(need=self.needSaGain)
         pbar = ProgressBar(maxval=self.span)
         pbar.start()
         while freq <= self.parent.limitsAmpl.get('freqstop') - 1:
@@ -63,6 +61,7 @@ class FullBandResult:
                     raw_input("Incorrect number of freq. Press enter for continue...")
                     os.system("cls")
                     print(tableResult)
+                    continue
                 self.sa.write(":SENSE:FREQ:center {} MHz".format(freq))
                 self.gen1.write(":FREQ:FIX {} MHz".format(freq - 0.3))
                 self.gen2.write(":FREQ:FIX {} MHz".format(freq + 0.3))

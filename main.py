@@ -1,6 +1,7 @@
 import re
 import sys
 import os
+
 from biasCalibrate import BiasCalibrate
 from checkResult import FullBandResult
 from config import Config
@@ -10,7 +11,7 @@ from test5 import Test5
 from instrument import Instrument
 import serial.tools.list_ports
 
-__version__ = '0.3.5'
+__version__ = '0.3.6'
 
 
 class Main:
@@ -37,7 +38,6 @@ class Main:
         print("********************************")
         print("Current port: {}".format(self.config.getConfAttr('settings', 'comPort')))
         print("********************************")
-
         try:
             menu = int(input("Choose operation: "))
         except Exception:

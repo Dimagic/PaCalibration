@@ -21,9 +21,8 @@ class LoopTwo:
 
         self.span = self.parent.limitsAmpl.get('freqstop') - self.parent.limitsAmpl.get('freqstart')
         self.center = self.parent.limitsAmpl.get('freqstart') + self.span / 2
-
-        self.harmonyLimit = -30
-        self.needSaGain = 30
+        self.harmonyLimit = self.parent.limitsAmpl.get('l2_limit')
+        self.needSaGain = self.parent.limitsAmpl.get('needGain')
 
         self.sa = self.instrument.saPreset(freq=self.center, line=self.harmonyLimit)
         self.gen1, self.gen2 = self.instrument.genPreset(freq=self.center)
