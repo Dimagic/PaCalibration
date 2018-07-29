@@ -27,7 +27,7 @@ class LoopOne:
         self.na.write(":SENS1:FREQ:CENT {}E6".format(center))
         self.na.write(":SENS1:FREQ:SPAN {}E6".format(span))
         self.na.write(":SOUR1:POW:ATT 40")
-        self.na.write(":SOUR1:POW:PORT1 -25")
+        self.na.write(":SOUR1:POW:PORT1 -20")
         self.na.write(":CALC1:PAR1:DEF S21")
         self.na.write(":SENS1:SWE:POIN 1001")
         self.na.write(":DISP:WIND1:TRAC1:Y:RLEV -30")

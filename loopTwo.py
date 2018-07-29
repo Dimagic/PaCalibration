@@ -45,7 +45,7 @@ class LoopTwo:
 
     def calibration(self):
         self.minGain.update({'FaseData': 0, 'AmplData': 0, 'Gain': 1024})
-        self.setGenPow(self.needSaGain)
+        self.instrument.setGenPow(self.needSaGain)
         self.markFreqList = (self.center - .9, self.center + .9)
         for i, freq in enumerate(self.markFreqList):
             i += 1
@@ -158,7 +158,7 @@ class LoopTwo:
         return round(sum(gainList)/len(gainList), 2)
 
     def setGenPow(self, need):
-        self.sa.write("DISP:WIND:TRAC:Y:RLEV:OFFS {}".format(self.instrument.getOffset(freq=self.center)))
+        self.sa.write("DISP:WIND:TRAC:Y:RLEV:OFFS {}".format(self.instrument.getOffset()))
         genList = (self.gen1, self.gen2)
         for curGen, freq in enumerate([self.center - 0.3, self.center + 0.3]):
             self.sa.write(":CALC:MARK1:STAT ON")
@@ -168,7 +168,7 @@ class LoopTwo:
             gen.write("POW:AMPL -20 dBm")
             gen.write(":OUTP:STAT ON")
             time.sleep(1)
-            self.instrument.setGainTo(nGen=curGen + 1, need=need)
+            self.instrument.setGainTo(gen=gen, need=need)
             gen.write(":OUTP:STAT OFF")
         self.gen1.write(":OUTP:STAT ON")
         self.gen2.write(":OUTP:STAT ON")

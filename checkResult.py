@@ -22,25 +22,35 @@ class FullBandResult:
         self.checkResult()
 
     def checkResult(self):
-        tableResult = PrettyTable(["N", "Freq", "Harmony 1", "Harmony 2", "Max value"])
+        tableResult = PrettyTable(["N", "Freq", "Power", "Density"])
         nn = 0
         freqDict = {}
-        freq = self.parent.limitsAmpl.get('freqstart') + 1
-        self.instrument.setGenPow(need=self.needSaGain)
+        freq = self.parent.limitsAmpl.get('freqstart')
         pbar = ProgressBar(maxval=self.span)
         pbar.start()
-        while freq <= self.parent.limitsAmpl.get('freqstop') - 1:
+        self.instrument.setGenPow(need=self.needSaGain)
+        # self.sa.write(":CONF:CHP")
+        self.sa.write(":CALC:MARK1:STAT ON")
+        self.sa.write(":CALC:MARK2:STAT ON")
+        while freq <= self.parent.limitsAmpl.get('freqstop'):
             nn += 1
-            self.setMarkers(freq - 1)
             self.sa.write(":SENSE:FREQ:center {} MHz".format(freq))
             self.gen1.write(":FREQ:FIX {} MHz".format(freq - 0.3))
             self.gen2.write(":FREQ:FIX {} MHz".format(freq + 0.3))
+            self.sa.write(":CALC:MARK1:X {} MHz".format(freq - 0.9))
+            self.sa.write(":CALC:MARK2:X {} MHz".format(freq + 0.9))
+            # pow = round(float(self.sa.query(":MEAS:CHP:CHP?")), 2)
             time.sleep(.5)
-            gainList = self.getGainList()
-            tableResult.add_row([nn, freq, gainList[0], gainList[1], max(gainList)])
+            pow = 1
+            m1 = round(float(self.sa.query("CALC:MARK1:Y?")), 2)
+            m2 = round(float(self.sa.query("CALC:MARK2:Y?")), 2)
+            den = max(m1, m2)
+            # gainList = self.getGainList()
+            tableResult.add_row([nn, freq, pow, den])
             freqDict.update({nn: float(freq)})
-            freq += 1
+            freq += 5
             pbar.update(nn)
+        self.sa.write("INIT:CONT ON")
         pbar.finish()
         self.gen1.write(":OUTP:STAT OFF")
         self.gen2.write(":OUTP:STAT OFF")

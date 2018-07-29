@@ -11,7 +11,7 @@ from test5 import Test5
 from instrument import Instrument
 import serial.tools.list_ports
 
-__version__ = '0.3.6'
+__version__ = '0.3.7'
 
 
 class Main:

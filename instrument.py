@@ -119,9 +119,11 @@ class Instrument:
         self.sa.write(":CAL:AUTO OFF")
         self.sa.write(":SENSE:FREQ:center {} MHz".format(freq))
         self.sa.write(":SENSE:FREQ:span {} MHz".format(3.5))
-        self.sa.write("DISP:WIND:TRAC:Y:DLIN {} dBm".format(line))
-        self.sa.write("DISP:WIND:TRAC:Y:DLIN:STAT 1")
-        self.sa.write("BAND:VID 27 KHZ")
+        self.sa.write(":DISP:WIND:TRAC:Y:DLIN {} dBm".format(line))
+        self.sa.write(":DISP:WIND:TRAC:Y:DLIN:STAT 1")
+        self.sa.write(":BAND:VID:AUTO 27 KHz")
+        # self.sa.write(":BAND:VID:AUTO ON")
+        # self.sa.write(":BAND:RES:AUTO ON")
         return self.sa
 
     def genPreset(self, freq):
@@ -141,13 +143,15 @@ class Instrument:
     def setGenPow(self, need):
         self.sa.write(":SENSE:FREQ:center {} MHz".format(self.center))
         self.sa.write("DISP:WIND:TRAC:Y:RLEV:OFFS {}".format(self.getOffset()))
+        self.sa.write(":POW:ATT 0")
+        self.sa.write(":DISP:WIND:TRAC:Y:RLEV {}".format(float(self.getOffset()) - 10))
         genList = (self.gen1, self.gen2)
         for curGen, freq in enumerate([self.center - 0.3, self.center + 0.3]):
             self.sa.write(":CALC:MARK1:STAT ON")
             self.sa.write(":CALC:MARK1:X {} MHz".format(freq))
             gen = genList[curGen]
             gen.write(":FREQ:FIX {} MHz".format(freq))
-            gen.write("POW:AMPL -20 dBm")
+            gen.write("POW:AMPL -65 dBm")
             gen.write(":OUTP:STAT ON")
             time.sleep(1)
             self.setGainTo(gen=gen, need=need)
@@ -159,9 +163,10 @@ class Instrument:
     def setGainTo(self, gen, need):
         gain = float(self.sa.query("CALC:MARK1:Y?"))
         genPow = float(gen.query("POW:AMPL?"))
-        acc = 0.03
+        acc = 0.05
         while not (gain - acc <= need <= gain + acc):
             if genPow >= 0:
+                gen.write("POW:AMPL -65 dBm")
                 self.gen1.write(":OUTP:STAT OFF")
                 self.gen2.write(":OUTP:STAT OFF")
                 raw_input("Gain problem. Press enter for continue...")
@@ -170,12 +175,14 @@ class Instrument:
             gain = float(self.sa.query("CALC:MARK1:Y?"))
             time.sleep(.1)
             delta = abs(need - gain)
-            if delta <= 0.5:
-                steep = 0.01
-            elif delta <= 2:
-                steep = 0.5
-            else:
+            if delta <= 5:
+                steep = delta
+            # elif delta <= 5:
+            #     steep = 0.5
+            elif delta <= 10:
                 steep = 1
+            else:
+                steep = 5
             if gain < need:
                 genPow += steep
             else:
